@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตะลุยโจทย์วรรณคดี Interactive Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <!-- Player Stats Bar -->
+    <div id="player-stats" class="player-stats glass-card hidden">
+        <div class="stat-group">
+            <span class="stat-icon">🎓</span>
+            <div class="stat-info">
+                <span class="stat-label">เลเวล <span id="player-level">1</span></span>
+                <span id="player-title" class="stat-title">ศิษย์ใหม่</span>
+            </div>
+        </div>
+        <div class="stat-group xp-group">
+            <div class="xp-bar-container">
+                <div id="xp-fill" class="xp-fill"></div>
+            </div>
+            <span id="player-xp-text" class="stat-value text-small">0 / 100 XP</span>
+        </div>
+        <div class="stat-group hearts-group hidden" id="hearts-container">
+            <span class="heart" id="heart-1">❤️</span>
+            <span class="heart" id="heart-2">❤️</span>
+            <span class="heart" id="heart-3">❤️</span>
+        </div>
+    </div>
+
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" class="screen active">
+        <div class="welcome-content text-center">
+            <h1 class="game-title">วรรณคดีผจญภัย</h1>
+            <p class="game-subtitle">เตรียมพร้อมสำหรับภารกิจไขปริศนาวรรณคดีไทย</p>
+            <button id="btn-start-adventure" class="btn-primary start-pulse">เริ่มการผจญภัย 🗡️</button>
+        </div>
+    </div>
+
+    <!-- Intro Video Screen -->
+    <div id="intro-screen" class="screen">
+        <video id="intro-video" class="fullscreen-video" playsinline>
+            <!-- source injected via JS -->
+        </video>
+        <button id="btn-skip-intro" class="btn-skip">ข้าม (Skip) ⏭️</button>
+    </div>
+
+    <!-- Adventure Map Dashboard -->
+    <div id="home-screen" class="screen">
+        <header>
+            <h1>🗺️ แผนที่ผจญภัย</h1>
+            <p>เลือกด่านที่คุณต้องการพิชิต</p>
+        </header>
+        <main>
+            <div id="adventure-map" class="map-container">
+                <svg id="map-lines" class="map-lines"></svg>
+                <div id="map-nodes" class="map-nodes">
+                    <!-- Map Nodes injected via JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Content & Quiz Screen -->
+    <div id="lesson-screen" class="screen">
+        <button id="back-btn" class="btn-secondary">← กลับหน้าหลัก</button>
+        
+        <div id="lesson-container" class="glass-card">
+            <!-- Header with Image -->
+            <div class="lesson-header">
+                <div class="lesson-image-wrapper">
+                    <img id="lesson-image" src="" alt="Lesson Image">
+                </div>
+                <div class="lesson-title-wrapper">
+                    <h2 id="lesson-title"></h2>
+                    <p id="lesson-author" class="subtitle"></p>
+                </div>
+            </div>
+
+            <!-- Content Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="content">📖 สรุปเนื้อหา</button>
+                <button class="tab-btn" data-tab="quiz">📝 ทำแบบทดสอบ</button>
+            </div>
+
+            <!-- Content Area -->
+            <div id="content-area" class="tab-content active">
+                <div class="accordion">
+                    <div class="accordion-item">
+                        <button class="accordion-header">บริบทและสังคม <span class="icon">+</span></button>
+                        <div class="accordion-body"><p id="lesson-context"></p></div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header">รูปแบบคำประพันธ์ <span class="icon">+</span></button>
+                        <div class="accordion-body"><p id="lesson-form"></p></div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header">เนื้อหาโดยสรุป (Synopsis) <span class="icon">+</span></button>
+                        <div class="accordion-body"><p id="lesson-synopsis"></p></div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header">นัยยะแฝงและข้อคิด <span class="icon">+</span></button>
+                        <div class="accordion-body"><p id="lesson-hidden"></p></div>
+                    </div>
+                    <div class="accordion-item">
+                        <button class="accordion-header">คำประพันธ์ที่น่าสนใจ <span class="icon">+</span></button>
+                        <div class="accordion-body">
+                            <div class="quote-box">
+                                <p id="lesson-quote"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="action-row">
+                    <button id="start-quiz-btn" class="btn-primary">ไปทำแบบทดสอบ (10 ข้อ) 🚀</button>
+                </div>
+            </div>
+
+            <!-- Quiz Area -->
+            <div id="quiz-area" class="tab-content">
+                <div id="quiz-progress" class="quiz-progress">
+                    <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+                    <span id="quiz-status">ข้อ 1 / 10</span>
+                </div>
+                
+                <div id="combo-container" class="combo-box hidden">
+                    🔥 Combo <span id="combo-count">0</span>!
+                </div>
+                
+                <div id="quiz-question-container">
+                    <h3 id="quiz-question">คำถาม?</h3>
+                    <div id="quiz-options" class="options-grid">
+                        <!-- Options injected via JS -->
+                    </div>
+                </div>
+
+                <div id="quiz-feedback" class="feedback-box hidden">
+                    <div id="feedback-icon" class="icon"></div>
+                    <div class="feedback-text">
+                        <h4 id="feedback-title"></h4>
+                        <p id="feedback-explanation"></p>
+                    </div>
+                    <button id="next-question-btn" class="btn-primary">ข้อต่อไป</button>
+                </div>
+
+                <!-- Quiz Summary -->
+                <div id="quiz-summary" class="hidden text-center">
+                    <h3>🎉 สรุปผลการทดสอบ</h3>
+                    <div class="score-circle">
+                        <span id="final-score">0</span><span class="total">/ 10</span>
+                    </div>
+                    <p id="score-message"></p>
+                    <button id="retry-btn" class="btn-secondary">ทำอีกครั้ง</button>
+                    <button id="home-btn-summary" class="btn-primary">กลับหน้าหลัก</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="modal hidden">
+        <div class="modal-content glass-card text-center">
+            <h2 class="error-text">💀 พ่ายแพ้!</h2>
+            <p>คุณสูญเสียหัวใจทั้งหมดในด่านนี้<br>กลับไปอ่านเนื้อหาเพื่อฟื้นฟูพลังแล้วมาสู้ใหม่นะ</p>
+            <button id="btn-revive" class="btn-primary" style="margin-top: 1.5rem;">กลับไปอ่านเนื้อหา</button>
+        </div>
+    </div>
+
+    <!-- Level Up Modal -->
+    <div id="level-up-modal" class="modal hidden">
+        <div class="modal-content glass-card text-center">
+            <h2 class="success-text">🌟 ยินดีด้วย เลื่อนระดับ! 🌟</h2>
+            <div class="level-badge" id="level-badge-display">2</div>
+            <p>คุณก้าวขึ้นสู่ระดับ: <span id="new-level-name" class="highlight-text"></span></p>
+            <button id="btn-close-levelup" class="btn-primary" style="margin-top: 1.5rem;">ยอดเยี่ยม!</button>
+        </div>
+    </div>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confetti" class="hidden"></canvas>
+
+    <!-- Scripts -->
+    <script src="data1.js"></script>
+    <script src="data2.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
