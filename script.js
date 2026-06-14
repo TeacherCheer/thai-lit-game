@@ -600,6 +600,9 @@ let gamePaused = false;
 let animationFrameId;
 let lastTime = 0;
 
+const WORLD_WIDTH = 2000;
+const WORLD_HEIGHT = 2000;
+
 let player = { x: 0, y: 0, radius: 24, speed: 150, hp: 3, maxHp: 3, level: 1, xp: 0, maxXp: 2, attackCooldown: 1, currentCooldown: 0, damage: 1, projectiles: 1 };
 let enemies = [];
 let projectiles = [];
@@ -621,8 +624,8 @@ function startActionGame() {
     
     // Reset State
     player = { 
-        x: gameCanvas.width / 2, 
-        y: gameCanvas.height / 2, 
+        x: WORLD_WIDTH / 2, 
+        y: WORLD_HEIGHT / 2, 
         radius: 24, speed: 200, hp: 3, maxHp: 3, 
         level: 1, xp: 0, maxXp: 2, 
         attackCooldown: 1.5, currentCooldown: 0, 
@@ -700,8 +703,8 @@ function updateGame(dt) {
     }
     
     // Boundary check
-    player.x = Math.max(player.radius, Math.min(gameCanvas.width - player.radius, player.x));
-    player.y = Math.max(player.radius, Math.min(gameCanvas.height - player.radius, player.y));
+    player.x = Math.max(player.radius, Math.min(WORLD_WIDTH - player.radius, player.x));
+    player.y = Math.max(player.radius, Math.min(WORLD_HEIGHT - player.radius, player.y));
     
     // Attack
     player.currentCooldown -= dt;
@@ -792,17 +795,26 @@ function updateGame(dt) {
 function drawGame() {
     gCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
     
+    gCtx.save();
+    let cameraX = player.x - gameCanvas.width / 2;
+    let cameraY = player.y - gameCanvas.height / 2;
+    cameraX = Math.max(0, Math.min(cameraX, WORLD_WIDTH - gameCanvas.width));
+    cameraY = Math.max(0, Math.min(cameraY, WORLD_HEIGHT - gameCanvas.height));
+    gCtx.translate(-cameraX, -cameraY);
+    
     // Static Background (replaces grid to prevent dizziness)
-    if (bgImg.complete) {
-        gCtx.drawImage(bgImg, 0, 0, gameCanvas.width, gameCanvas.height);
+    if (bgImg.complete && bgImg.naturalWidth > 0) {
+        let ptrn = gCtx.createPattern(bgImg, 'repeat');
+        gCtx.fillStyle = ptrn;
+        gCtx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     } else {
         gCtx.fillStyle = '#2d4b2b';
-        gCtx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+        gCtx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
     }
     
     // Enemies
     enemies.forEach(e => {
-        if (enemyImg.complete) {
+        if (enemyImg.complete && enemyImg.naturalWidth > 0) {
             gCtx.drawImage(enemyImg, e.x - e.radius, e.y - e.radius, e.radius * 2, e.radius * 2);
         } else {
             gCtx.fillStyle = '#EF4444';
@@ -821,7 +833,7 @@ function drawGame() {
     });
     
     // Player
-    if (playerImg.complete) {
+    if (playerImg.complete && playerImg.naturalWidth > 0) {
         // Draw the top-left sprite from Actor1.png (48x48 pixels)
         gCtx.drawImage(playerImg, 0, 0, 48, 48, player.x - 24, player.y - 24, 48, 48);
     } else {
@@ -833,6 +845,8 @@ function drawGame() {
         gCtx.lineWidth = 2;
         gCtx.stroke();
     }
+    
+    gCtx.restore();
 }
 
 function spawnEnemy() {
