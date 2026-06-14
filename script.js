@@ -622,6 +622,9 @@ function startActionGame() {
     gameCanvas.width = window.innerWidth;
     gameCanvas.height = window.innerHeight;
     
+    // Handle window resize/orientation change
+    window.addEventListener('resize', resizeCanvas);
+    
     // Reset State
     player = { 
         x: WORLD_WIDTH / 2, 
@@ -647,9 +650,17 @@ function startActionGame() {
 function quitActionGame() {
     gameActive = false;
     cancelAnimationFrame(animationFrameId);
+    window.removeEventListener('resize', resizeCanvas);
     document.getElementById('action-screen').classList.remove('active');
     homeScreen.classList.add('active');
     drawMap();
+}
+
+function resizeCanvas() {
+    if (gameActive) {
+        gameCanvas.width = window.innerWidth;
+        gameCanvas.height = window.innerHeight;
+    }
 }
 
 function updateGameHUD() {
@@ -1081,13 +1092,13 @@ function handleJoystickStart(e) {
     const rect = joystickContainer.getBoundingClientRect();
     joystickCenter.x = rect.left + rect.width / 2;
     joystickCenter.y = rect.top + rect.height / 2;
-    updateJoystickPosition(e.touches[0].clientX, e.touches[0].clientY);
+    updateJoystickPosition(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
 }
 
 function handleJoystickMove(e) {
-    e.preventDefault();
     if (!joystickActive) return;
-    updateJoystickPosition(e.touches[0].clientX, e.touches[0].clientY);
+    e.preventDefault();
+    updateJoystickPosition(e.targetTouches[0].clientX, e.targetTouches[0].clientY);
 }
 
 function handleJoystickEnd(e) {
