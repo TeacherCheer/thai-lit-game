@@ -961,3 +961,158 @@ button {
     border-color: white;
     color: white;
 }
+
+/* =========================================
+   Action Game Styles
+   ========================================= */
+
+#action-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    padding: 0;
+    background: #111827; /* Dark background for game */
+    z-index: 100;
+    display: none;
+    flex-direction: column;
+}
+
+#action-screen.active {
+    display: flex;
+}
+
+.game-hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    pointer-events: none; /* Let clicks pass through to canvas */
+}
+
+.game-stats {
+    display: flex;
+    gap: 2rem;
+    font-size: 1.5rem;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.game-xp-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.2);
+}
+
+.game-xp-bar .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #60A5FA, #3B82F6);
+    width: 0%;
+    transition: width 0.2s linear;
+}
+
+.game-level {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #60A5FA;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+#game-canvas {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#quit-action-btn {
+    pointer-events: auto; /* Re-enable clicks for the button */
+}
+
+/* =========================================
+   Upgrade Modal Styles
+   ========================================= */
+#upgrade-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.upgrade-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid var(--primary-light);
+    border-radius: 15px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.upgrade-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(79, 70, 229, 0.2);
+    background: #EEF2FF;
+}
+
+.upgrade-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.upgrade-title {
+    font-weight: bold;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+}
+
+.upgrade-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* =========================================
+   Joystick Styles
+   ========================================= */
+#joystick-container {
+    position: absolute;
+    bottom: 2rem;
+    left: 2rem;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    z-index: 50;
+    touch-action: none; /* Prevent scrolling when using joystick */
+    display: none; /* Hidden by default on desktop */
+}
+
+#joystick-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    pointer-events: none;
+}
+
+@media (max-width: 1024px) { /* Show on tablet/mobile */
+    #joystick-container {
+        display: block;
+    }
+}

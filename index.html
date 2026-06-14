@@ -88,7 +88,7 @@
             <!-- Content Tabs -->
             <div class="tabs">
                 <button class="tab-btn active" data-tab="content">📖 สรุปเนื้อหา</button>
-                <button class="tab-btn" data-tab="quiz">📝 ทำแบบทดสอบ</button>
+                <button class="tab-btn" data-tab="quiz">⚔️ เข้าสู่สมรภูมิ</button>
             </div>
 
             <!-- Content Area -->
@@ -120,48 +120,82 @@
                     </div>
                 </div>
                 <div class="action-row">
-                    <button id="start-quiz-btn" class="btn-primary">ไปทำแบบทดสอบ (10 ข้อ) 🚀</button>
+                    <button id="start-action-btn" class="btn-primary">เตรียมพร้อมลุย! 🚀</button>
                 </div>
             </div>
 
-            <!-- Quiz Area -->
-            <div id="quiz-area" class="tab-content">
-                <div id="quiz-progress" class="quiz-progress">
-                    <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
-                    <span id="quiz-status">ข้อ 1 / 10</span>
-                </div>
-                
-                <div id="combo-container" class="combo-box hidden">
-                    🔥 Combo <span id="combo-count">0</span>!
-                </div>
-                
-                <div id="quiz-question-container">
-                    <h3 id="quiz-question">คำถาม?</h3>
-                    <div id="quiz-options" class="options-grid">
-                        <!-- Options injected via JS -->
-                    </div>
-                </div>
-
-                <div id="quiz-feedback" class="feedback-box hidden">
-                    <div id="feedback-icon" class="icon"></div>
-                    <div class="feedback-text">
-                        <h4 id="feedback-title"></h4>
-                        <p id="feedback-explanation"></p>
-                    </div>
-                    <button id="next-question-btn" class="btn-primary">ข้อต่อไป</button>
-                </div>
-
-                <!-- Quiz Summary -->
-                <div id="quiz-summary" class="hidden text-center">
-                    <h3>🎉 สรุปผลการทดสอบ</h3>
-                    <div class="score-circle">
-                        <span id="final-score">0</span><span class="total">/ 10</span>
-                    </div>
-                    <p id="score-message"></p>
-                    <button id="retry-btn" class="btn-secondary">ทำอีกครั้ง</button>
-                    <button id="home-btn-summary" class="btn-primary">กลับหน้าหลัก</button>
+            <!-- Quiz/Action Area (Pre-game) -->
+            <div id="quiz-area" class="tab-content text-center">
+                <h3>พร้อมสำหรับการต่อสู้หรือยัง?</h3>
+                <p>เอาชีวิตรอดจากศัตรู เก็บม้วนคัมภีร์เพื่อเพิ่มระดับ</p>
+                <p class="highlight-text">เมื่อระดับเพิ่มขึ้น คุณต้องตอบคำถามให้ถูกเพื่อรับพลังใหม่!</p>
+                <div class="action-row" style="margin-top: 2rem;">
+                    <button id="enter-battle-btn" class="btn-primary start-pulse">เข้าสู่สมรภูมิ 🗡️</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Action Game Screen -->
+    <div id="action-screen" class="screen">
+        <div class="game-hud">
+            <div class="game-stats">
+                <span id="game-hp">❤️ ❤️ ❤️</span>
+                <span id="game-timer">⏳ 00:00</span>
+            </div>
+            <div class="game-xp-bar">
+                <div id="game-xp-fill" class="progress-fill"></div>
+            </div>
+            <div class="game-level">Lv <span id="game-level-text">1</span></div>
+        </div>
+        <canvas id="game-canvas"></canvas>
+        <button id="quit-action-btn" class="btn-secondary" style="position: absolute; top: 1rem; right: 1rem; z-index: 10;">ยอมแพ้</button>
+
+        <!-- On-screen Joystick for Mobile/Tablet -->
+        <div id="joystick-container">
+            <div id="joystick-knob"></div>
+        </div>
+    </div>
+
+    <!-- Upgrade Quiz Modal -->
+    <div id="upgrade-modal" class="modal hidden">
+        <div class="modal-content glass-card" style="max-width: 600px; width: 90%;">
+            <h2 class="text-center highlight-text">🌟 เลื่อนระดับ! 🌟</h2>
+            <p class="text-center">ตอบคำถามเพื่อรับพลังอัปเกรด!</p>
+            
+            <div id="upgrade-question-container" style="margin-top: 1.5rem;">
+                <h3 id="upgrade-question">คำถาม?</h3>
+                <div id="upgrade-options" class="options-grid">
+                    <!-- Options injected via JS -->
+                </div>
+            </div>
+
+            <div id="upgrade-feedback" class="feedback-box hidden">
+                <div id="upgrade-feedback-icon" class="icon"></div>
+                <div class="feedback-text">
+                    <h4 id="upgrade-feedback-title"></h4>
+                    <p id="upgrade-feedback-explanation"></p>
+                </div>
+                <div id="upgrade-choices" class="hidden">
+                    <h4 class="text-center" style="margin-top: 1rem;">เลือกพลังของคุณ:</h4>
+                    <div id="upgrade-cards" class="options-grid">
+                        <!-- Upgrades injected via JS -->
+                    </div>
+                </div>
+                <button id="upgrade-continue-btn" class="btn-primary hidden" style="margin-top: 1rem;">สู้ต่อไป!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stage Clear Modal -->
+    <div id="stage-clear-modal" class="modal hidden">
+        <div class="modal-content glass-card text-center">
+            <h2 class="success-text">🎉 พิชิตด่านสำเร็จ!</h2>
+            <p>คุณเอาชีวิตรอดและตอบคำถามได้ยอดเยี่ยม!</p>
+            <div class="score-circle">
+                <span id="stage-score">0</span>
+            </div>
+            <button id="btn-back-map-clear" class="btn-primary" style="margin-top: 1.5rem;">กลับแผนที่</button>
         </div>
     </div>
 

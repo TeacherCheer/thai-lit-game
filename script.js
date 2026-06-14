@@ -379,9 +379,16 @@ tabBtns.forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
-document.getElementById('start-quiz-btn').addEventListener('click', () => {
+document.getElementById('start-action-btn')?.addEventListener('click', () => {
     switchTab('quiz');
-    startQuiz();
+});
+
+document.getElementById('enter-battle-btn')?.addEventListener('click', () => {
+    startActionGame();
+});
+
+document.getElementById('quit-action-btn')?.addEventListener('click', () => {
+    quitActionGame();
 });
 
 backBtn.addEventListener('click', () => {
@@ -521,7 +528,7 @@ function showFeedback(isCorrect, explanation) {
     }
 }
 
-document.getElementById('next-question-btn').addEventListener('click', () => {
+document.getElementById('next-question-btn')?.addEventListener('click', () => {
     if (playerHearts === 0) return; // Cannot continue if game over
     currentQuestionIndex++;
     if (currentQuestionIndex < 10) {
@@ -561,8 +568,8 @@ function showSummary() {
     }
 }
 
-document.getElementById('retry-btn').addEventListener('click', startQuiz);
-document.getElementById('home-btn-summary').addEventListener('click', () => {
+document.getElementById('retry-btn')?.addEventListener('click', startQuiz);
+document.getElementById('home-btn-summary')?.addEventListener('click', () => {
     lessonScreen.classList.remove('active');
     homeScreen.classList.add('active');
     document.getElementById('hearts-container').classList.add('hidden');
@@ -572,3 +579,523 @@ document.getElementById('home-btn-summary').addEventListener('click', () => {
 
 // Init app
 document.addEventListener('DOMContentLoaded', initDashboard);
+
+// ==========================================
+// Action Game Engine (Survivor-like)
+// ==========================================
+// Load Assets
+const playerImg = new Image();
+playerImg.src = 'img/characters/Actor1.png'; // Using first character sprite
+
+const enemyImg = new Image();
+enemyImg.src = 'img/enemies/Goblin.png';
+
+const bgImg = new Image();
+bgImg.src = 'img/battlebacks1/Grassland.png'; // Static background to prevent dizziness
+
+const gameCanvas = document.getElementById('game-canvas');
+const gCtx = gameCanvas.getContext('2d');
+let gameActive = false;
+let gamePaused = false;
+let animationFrameId;
+let lastTime = 0;
+
+let player = { x: 0, y: 0, radius: 24, speed: 150, hp: 3, maxHp: 3, level: 1, xp: 0, maxXp: 2, attackCooldown: 1, currentCooldown: 0, damage: 1, projectiles: 1 };
+let enemies = [];
+let projectiles = [];
+let gameTimer = 0;
+let enemySpawnTimer = 0;
+let currentQuestionForUpgrade = null;
+
+const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+
+window.addEventListener('keydown', e => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+window.addEventListener('keyup', e => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+function startActionGame() {
+    lessonScreen.classList.remove('active');
+    document.getElementById('action-screen').classList.add('active');
+    
+    gameCanvas.width = window.innerWidth;
+    gameCanvas.height = window.innerHeight;
+    
+    // Reset State
+    player = { 
+        x: gameCanvas.width / 2, 
+        y: gameCanvas.height / 2, 
+        radius: 24, speed: 200, hp: 3, maxHp: 3, 
+        level: 1, xp: 0, maxXp: 2, 
+        attackCooldown: 1.5, currentCooldown: 0, 
+        damage: 1, projectiles: 1 
+    };
+    enemies = [];
+    projectiles = [];
+    gameTimer = 0;
+    enemySpawnTimer = 0;
+    gameActive = true;
+    gamePaused = false;
+    currentQuestionIndex = 0;
+    
+    updateGameHUD();
+    lastTime = performance.now();
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function quitActionGame() {
+    gameActive = false;
+    cancelAnimationFrame(animationFrameId);
+    document.getElementById('action-screen').classList.remove('active');
+    homeScreen.classList.add('active');
+    drawMap();
+}
+
+function updateGameHUD() {
+    document.getElementById('game-hp').innerText = '❤️'.repeat(player.hp) + '🖤'.repeat(player.maxHp - player.hp);
+    document.getElementById('game-level-text').innerText = player.level;
+    document.getElementById('game-xp-fill').style.width = `${(player.xp / player.maxXp) * 100}%`;
+    
+    const m = Math.floor(gameTimer / 60).toString().padStart(2, '0');
+    const s = Math.floor(gameTimer % 60).toString().padStart(2, '0');
+    document.getElementById('game-timer').innerText = `⏳ ${m}:${s}`;
+}
+
+function gameLoop(timestamp) {
+    if (!gameActive) return;
+    
+    const dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    
+    if (!gamePaused) {
+        updateGame(dt);
+    }
+    drawGame();
+    
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function updateGame(dt) {
+    gameTimer += dt;
+    enemySpawnTimer += dt;
+    
+    // Player movement
+    let dx = 0, dy = 0;
+    if (keys.w || keys.ArrowUp) dy -= 1;
+    if (keys.s || keys.ArrowDown) dy += 1;
+    if (keys.a || keys.ArrowLeft) dx -= 1;
+    if (keys.d || keys.ArrowRight) dx += 1;
+    
+    if (joystickActive) {
+        dx = joystickInput.x;
+        dy = joystickInput.y;
+    }
+    
+    if (dx !== 0 || dy !== 0) {
+        const len = Math.sqrt(dx*dx + dy*dy);
+        if (len > 1 || (!joystickActive && len > 0)) {
+            dx /= len;
+            dy /= len;
+        }
+        player.x += dx * player.speed * dt;
+        player.y += dy * player.speed * dt;
+    }
+    
+    // Boundary check
+    player.x = Math.max(player.radius, Math.min(gameCanvas.width - player.radius, player.x));
+    player.y = Math.max(player.radius, Math.min(gameCanvas.height - player.radius, player.y));
+    
+    // Attack
+    player.currentCooldown -= dt;
+    if (player.currentCooldown <= 0 && enemies.length > 0) {
+        player.currentCooldown = player.attackCooldown;
+        fireProjectile();
+    }
+    
+    // Spawning enemies - fast spawn from the start but capped
+    const spawnRate = Math.max(0.25, 0.5 - (gameTimer / 120)); 
+    if (enemySpawnTimer > spawnRate) {
+        enemySpawnTimer = 0;
+        if (enemies.length < 40) { // Cap maximum enemies on screen to 40
+            spawnEnemy();
+        }
+    }
+    
+    // Update enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let e = enemies[i];
+        let ex = player.x - e.x;
+        let ey = player.y - e.y;
+        let dist = Math.sqrt(ex*ex + ey*ey);
+        
+        e.x += (ex / dist) * e.speed * dt;
+        e.y += (ey / dist) * e.speed * dt;
+        
+        // Damage player
+        if (dist < player.radius + e.radius) {
+            player.hp -= 1;
+            enemies.splice(i, 1); // remove enemy on hit
+            updateGameHUD();
+            document.getElementById('action-screen').classList.add('screen-shake');
+            setTimeout(() => document.getElementById('action-screen').classList.remove('screen-shake'), 300);
+            playWrongSound();
+            
+            if (player.hp <= 0) {
+                gameOverAction();
+            }
+        }
+    }
+    
+    // Update projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        let p = projectiles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        
+        if (p.life <= 0) {
+            projectiles.splice(i, 1);
+            continue;
+        }
+        
+        // Check collision with enemies
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            let e = enemies[j];
+            let dist = Math.sqrt(Math.pow(p.x - e.x, 2) + Math.pow(p.y - e.y, 2));
+            if (dist < p.radius + e.radius) {
+                e.hp -= player.damage;
+                projectiles.splice(i, 1);
+                
+                if (e.hp <= 0) {
+                    enemies.splice(j, 1);
+                    playTone(400, 'triangle', 0.1, 0.1); // hit sound
+                    
+                    // Directly gain XP (Kill 2 = Level Up)
+                    player.xp += 1;
+                    if (player.xp >= player.maxXp) {
+                        levelUpAction();
+                    }
+                    updateGameHUD();
+                }
+                break;
+            }
+        }
+    }
+    
+    // Win condition check (survive 90 seconds)
+    if (gameTimer >= 90) {
+        stageClearAction();
+    }
+    
+    // Update Timer UI occasionally
+    if (Math.floor(gameTimer * 10) % 10 === 0) updateGameHUD();
+}
+
+function drawGame() {
+    gCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+    
+    // Static Background (replaces grid to prevent dizziness)
+    if (bgImg.complete) {
+        gCtx.drawImage(bgImg, 0, 0, gameCanvas.width, gameCanvas.height);
+    } else {
+        gCtx.fillStyle = '#2d4b2b';
+        gCtx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+    }
+    
+    // Enemies
+    enemies.forEach(e => {
+        if (enemyImg.complete) {
+            gCtx.drawImage(enemyImg, e.x - e.radius, e.y - e.radius, e.radius * 2, e.radius * 2);
+        } else {
+            gCtx.fillStyle = '#EF4444';
+            gCtx.beginPath();
+            gCtx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+            gCtx.fill();
+        }
+    });
+    
+    // Projectiles
+    projectiles.forEach(p => {
+        gCtx.fillStyle = '#FCD34D';
+        gCtx.beginPath();
+        gCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        gCtx.fill();
+    });
+    
+    // Player
+    if (playerImg.complete) {
+        // Draw the top-left sprite from Actor1.png (48x48 pixels)
+        gCtx.drawImage(playerImg, 0, 0, 48, 48, player.x - 24, player.y - 24, 48, 48);
+    } else {
+        gCtx.fillStyle = '#3B82F6';
+        gCtx.beginPath();
+        gCtx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        gCtx.fill();
+        gCtx.strokeStyle = 'white';
+        gCtx.lineWidth = 2;
+        gCtx.stroke();
+    }
+}
+
+function spawnEnemy() {
+    let angle = Math.random() * Math.PI * 2;
+    let dist = Math.max(gameCanvas.width, gameCanvas.height) / 2 + 50;
+    enemies.push({
+        x: player.x + Math.cos(angle) * dist,
+        y: player.y + Math.sin(angle) * dist,
+        radius: 20 + Math.random() * 5,
+        speed: 60 + Math.random() * 50 + (gameTimer * 0.5), // gets faster over time
+        hp: 1 + Math.floor(gameTimer / 20)
+    });
+}
+
+function fireProjectile() {
+    if (enemies.length === 0) return;
+    
+    // Find closest enemy
+    let closest = null;
+    let minD = Infinity;
+    enemies.forEach(e => {
+        let d = Math.pow(player.x - e.x, 2) + Math.pow(player.y - e.y, 2);
+        if (d < minD) { minD = d; closest = e; }
+    });
+    
+    if (closest) {
+        for(let i=0; i<player.projectiles; i++) {
+            let angleOffset = (i - (player.projectiles-1)/2) * 0.2;
+            let targetAngle = Math.atan2(closest.y - player.y, closest.x - player.x) + angleOffset;
+            
+            projectiles.push({
+                x: player.x, y: player.y,
+                vx: Math.cos(targetAngle) * 400,
+                vy: Math.sin(targetAngle) * 400,
+                radius: 5,
+                life: 2 // 2 seconds
+            });
+        }
+        playTone(600, 'square', 0.1, 0.05); // shoot sound
+    }
+}
+
+// Remove spawnGem completely
+
+function gameOverAction() {
+    gamePaused = true;
+    setTimeout(() => {
+        quitActionGame();
+        document.getElementById('game-over-modal').classList.remove('hidden');
+    }, 1000);
+}
+
+function stageClearAction() {
+    gamePaused = true;
+    setTimeout(() => {
+        quitActionGame();
+        
+        // Unlock next stage
+        const currentGlobalIndex = literatures.findIndex(l => l.id === currentLit.id);
+        if (currentGlobalIndex === maxUnlockedStage) {
+            maxUnlockedStage++;
+            saveProgress();
+        }
+        
+        document.getElementById('stage-score').innerText = Math.floor(gameTimer * 10 + player.level * 100);
+        document.getElementById('stage-clear-modal').classList.remove('hidden');
+        initConfetti();
+        playCorrectSound();
+    }, 1000);
+}
+
+document.getElementById('btn-back-map-clear')?.addEventListener('click', () => {
+    document.getElementById('stage-clear-modal').classList.add('hidden');
+    stopConfetti();
+});
+
+// ==========================================
+// Upgrade Quiz System
+// ==========================================
+
+function levelUpAction() {
+    gamePaused = true;
+    player.xp -= player.maxXp; // Consumes required kills
+    player.level++;
+    player.maxXp = Math.min(6, player.maxXp + 2); // Scale up to a maximum of 6 kills needed
+    updateGameHUD();
+    
+    // Safety fallback
+    if (!currentLit || !currentLit.quiz) return resumeGame(); 
+    
+    // If answered all questions, clear the stage immediately!
+    if (currentQuestionIndex >= currentLit.quiz.length) {
+        stageClearAction();
+        return;
+    }
+    
+    currentQuestionForUpgrade = currentLit.quiz[currentQuestionIndex];
+    currentQuestionIndex++;
+    
+    showUpgradeQuiz();
+}
+
+function showUpgradeQuiz() {
+    const modal = document.getElementById('upgrade-modal');
+    modal.classList.remove('hidden');
+    
+    document.getElementById('upgrade-question-container').classList.remove('hidden');
+    document.getElementById('upgrade-feedback').classList.add('hidden');
+    document.getElementById('upgrade-choices').classList.add('hidden');
+    document.getElementById('upgrade-continue-btn').classList.add('hidden');
+    
+    document.getElementById('upgrade-question').innerText = currentQuestionForUpgrade.question;
+    
+    const optionsContainer = document.getElementById('upgrade-options');
+    optionsContainer.innerHTML = '';
+    
+    currentQuestionForUpgrade.options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerText = opt;
+        btn.onclick = (e) => handleUpgradeAnswer(index, btn);
+        optionsContainer.appendChild(btn);
+    });
+}
+
+function handleUpgradeAnswer(selectedIndex, btnElement) {
+    const isCorrect = selectedIndex === currentQuestionForUpgrade.answer;
+    
+    const allBtns = document.querySelectorAll('#upgrade-options .option-btn');
+    allBtns.forEach(b => b.disabled = true);
+    btnElement.classList.add('selected');
+    
+    const feedbackBox = document.getElementById('upgrade-feedback');
+    feedbackBox.classList.remove('hidden');
+    document.getElementById('upgrade-question-container').classList.add('hidden');
+    
+    if (isCorrect) {
+        btnElement.classList.add('correct');
+        playCorrectSound();
+        feedbackBox.className = 'feedback-box correct-bg';
+        document.getElementById('upgrade-feedback-icon').innerText = '✅';
+        document.getElementById('upgrade-feedback-title').innerText = 'ถูกต้อง! เลือกระดับพลัง';
+        document.getElementById('upgrade-feedback-explanation').innerText = currentQuestionForUpgrade.explanation;
+        
+        showUpgradeChoices();
+    } else {
+        btnElement.classList.add('wrong');
+        allBtns[currentQuestionForUpgrade.answer].classList.add('correct');
+        playWrongSound();
+        feedbackBox.className = 'feedback-box wrong-bg';
+        document.getElementById('upgrade-feedback-icon').innerText = '❌';
+        document.getElementById('upgrade-feedback-title').innerText = 'ผิดพลาด! ไม่ได้รับการอัปเกรด';
+        document.getElementById('upgrade-feedback-explanation').innerText = currentQuestionForUpgrade.explanation;
+        
+        // Take a small penalty or just no upgrade
+        const continueBtn = document.getElementById('upgrade-continue-btn');
+        continueBtn.classList.remove('hidden');
+        continueBtn.onclick = () => {
+            document.getElementById('upgrade-modal').classList.add('hidden');
+            resumeGame();
+        };
+    }
+}
+
+function showUpgradeChoices() {
+    document.getElementById('upgrade-choices').classList.remove('hidden');
+    const cardsContainer = document.getElementById('upgrade-cards');
+    cardsContainer.innerHTML = '';
+    
+    const possibleUpgrades = [
+        { id: 'dmg', icon: '⚔️', title: 'พลังโจมตี', desc: '+1 ดาเมจ', apply: () => player.damage += 1 },
+        { id: 'spd', icon: '👟', title: 'ความเร็ว', desc: '+20 ความเร็วเคลื่อนที่', apply: () => player.speed += 20 },
+        { id: 'atkSpd', icon: '⚡', title: 'ความเร็วโจมตี', desc: 'โจมตีไวขึ้น 20%', apply: () => player.attackCooldown *= 0.8 },
+        { id: 'proj', icon: '✨', title: 'วิชาแยกเงา', desc: '+1 จำนวนกระสุน', apply: () => player.projectiles += 1 },
+        { id: 'heal', icon: '❤️', title: 'ฟื้นฟู', desc: 'ฟื้นฟู 1 หัวใจ', apply: () => player.hp = Math.min(player.maxHp, player.hp + 1) }
+    ];
+    
+    // Pick 3 random upgrades
+    const shuffled = possibleUpgrades.sort(() => 0.5 - Math.random());
+    let selected = shuffled.slice(0, 3);
+    
+    selected.forEach(upg => {
+        const card = document.createElement('div');
+        card.className = 'upgrade-card';
+        card.innerHTML = `
+            <div class="upgrade-icon">${upg.icon}</div>
+            <div class="upgrade-title">${upg.title}</div>
+            <div class="upgrade-desc">${upg.desc}</div>
+        `;
+        card.onclick = () => {
+            upg.apply();
+            playTone(800, 'sine', 0.2, 0.2);
+            setTimeout(() => playTone(1200, 'sine', 0.3, 0.2), 100);
+            updateGameHUD();
+            document.getElementById('upgrade-modal').classList.add('hidden');
+            resumeGame();
+        };
+        cardsContainer.appendChild(card);
+    });
+}
+
+function resumeGame() {
+    gamePaused = false;
+    lastTime = performance.now();
+    // Clear keys to prevent getting stuck moving
+    Object.keys(keys).forEach(k => keys[k] = false);
+}
+
+// Init app
+document.addEventListener('DOMContentLoaded', initDashboard);
+
+// ==========================================
+// Mobile/Tablet Joystick Control
+// ==========================================
+let joystickActive = false;
+let joystickInput = { x: 0, y: 0 };
+let joystickCenter = { x: 0, y: 0 };
+const joystickContainer = document.getElementById('joystick-container');
+const joystickKnob = document.getElementById('joystick-knob');
+const joystickMaxRadius = 60; // Half of container width (120px/2)
+
+if (joystickContainer) {
+    joystickContainer.addEventListener('touchstart', handleJoystickStart, { passive: false });
+    joystickContainer.addEventListener('touchmove', handleJoystickMove, { passive: false });
+    joystickContainer.addEventListener('touchend', handleJoystickEnd);
+    joystickContainer.addEventListener('touchcancel', handleJoystickEnd);
+}
+
+function handleJoystickStart(e) {
+    e.preventDefault();
+    joystickActive = true;
+    const rect = joystickContainer.getBoundingClientRect();
+    joystickCenter.x = rect.left + rect.width / 2;
+    joystickCenter.y = rect.top + rect.height / 2;
+    updateJoystickPosition(e.touches[0].clientX, e.touches[0].clientY);
+}
+
+function handleJoystickMove(e) {
+    e.preventDefault();
+    if (!joystickActive) return;
+    updateJoystickPosition(e.touches[0].clientX, e.touches[0].clientY);
+}
+
+function handleJoystickEnd(e) {
+    joystickActive = false;
+    joystickInput = { x: 0, y: 0 };
+    if (joystickKnob) joystickKnob.style.transform = `translate(-50%, -50%)`;
+}
+
+function updateJoystickPosition(clientX, clientY) {
+    let dx = clientX - joystickCenter.x;
+    let dy = clientY - joystickCenter.y;
+    let distance = Math.sqrt(dx * dx + dy * dy);
+    
+    if (distance > joystickMaxRadius) {
+        dx = (dx / distance) * joystickMaxRadius;
+        dy = (dy / distance) * joystickMaxRadius;
+    }
+    
+    if (joystickKnob) {
+        joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    }
+    
+    joystickInput.x = dx / joystickMaxRadius;
+    joystickInput.y = dy / joystickMaxRadius;
+}
